@@ -23,11 +23,10 @@ import utils.Metodos;
 
 public class pnlChat extends javax.swing.JPanel {
 
-	private javax.swing.JLabel jLabel7;
-
 	private ComboBoxSuggestion tipo = new ComboBoxSuggestion();
 
 	private ComboBoxSuggestion accion = new ComboBoxSuggestion();
+
 	CopyTextAreaScroll entrada;
 
 	public pnlChat() {
@@ -35,6 +34,8 @@ public class pnlChat extends javax.swing.JPanel {
 		initComponents();
 
 		tipo.addItem("JPA");
+
+		tipo.addItem("HIBERNATE");
 
 		accion.addItem("Hibernate");
 
@@ -44,19 +45,7 @@ public class pnlChat extends javax.swing.JPanel {
 
 	private void initComponents() {
 
-		jLabel7 = new javax.swing.JLabel();
-
 		setBackground(new java.awt.Color(255, 255, 255));
-
-		jLabel7.setFont(new java.awt.Font("Roboto", 1, 48)); // NOI18N
-
-		jLabel7.setForeground(new java.awt.Color(128, 128, 131));
-
-		jLabel7.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-
-		jLabel7.setIcon(new javax.swing.ImageIcon(getClass().getResource("/img/chat.png"))); // NOI18N
-
-		jLabel7.setText("CHAT");
 
 		entrada = new CopyTextAreaScroll();
 
@@ -106,6 +95,8 @@ public class pnlChat extends javax.swing.JPanel {
 
 				entrada.setText(Metodos.limpiarCadena(entrada.getText()));
 
+				resultado = Metodos.limpiarSQL(entrada.getText());
+
 				switch (tipo) {
 
 				case "JPA":
@@ -114,15 +105,7 @@ public class pnlChat extends javax.swing.JPanel {
 
 					case "Hibernate":
 
-						resultado = Metodos.limpiarBuscandoPorString(entrada.getText(), "DROP DATABASE");
-
-						resultado = Metodos.limpiarBuscandoPorString(entrada.getText(), "USE");
-
-						resultado = Metodos.limpiarBuscandoPorString(entrada.getText(), "CREATE VIEW");
-
-						resultado = Metodos.limpiarBuscandoPorString(entrada.getText(), "CREATE OR REPLACE VIEW");
-
-						resultado = Metodos.limpiarBuscandoPorString(entrada.getText(), "INSERT");
+						resultado = Metodos.convertirAHibernate(entrada.getText(), true, true);
 
 						break;
 
@@ -131,8 +114,6 @@ public class pnlChat extends javax.swing.JPanel {
 					break;
 
 				}
-
-				resultado = Metodos.convertirAHibernate(entrada.getText(), true);
 
 				return resultado;
 
@@ -178,36 +159,23 @@ public class pnlChat extends javax.swing.JPanel {
 		});
 
 		javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-		layout.setHorizontalGroup(layout.createParallelGroup(Alignment.LEADING)
-				.addGroup(layout.createSequentialGroup().addGroup(layout.createParallelGroup(Alignment.LEADING)
-						.addGroup(layout.createSequentialGroup().addContainerGap().addComponent(jLabel7,
-								GroupLayout.DEFAULT_SIZE, 942, Short.MAX_VALUE))
-						.addGroup(layout.createSequentialGroup().addGap(28).addGroup(layout
-								.createParallelGroup(Alignment.LEADING)
-								.addGroup(layout.createSequentialGroup()
-										.addComponent(tipo, GroupLayout.PREFERRED_SIZE, 444, GroupLayout.PREFERRED_SIZE)
-										.addGap(31)
-										.addComponent(accion, GroupLayout.DEFAULT_SIZE, 440, Short.MAX_VALUE))
-								.addGroup(
-										layout.createSequentialGroup().addPreferredGap(ComponentPlacement.RELATED)
-												.addGroup(layout.createParallelGroup(Alignment.LEADING)
-														.addGroup(layout.createSequentialGroup()
-																.addComponent(rdbtnNewRadioButton)
-																.addPreferredGap(ComponentPlacement.UNRELATED)
-																.addComponent(btnNewButton_1))
-														.addGroup(layout.createSequentialGroup()
-																.addComponent(entrada, GroupLayout.PREFERRED_SIZE, 449,
-																		GroupLayout.PREFERRED_SIZE)
-																.addPreferredGap(ComponentPlacement.RELATED, 18,
-																		Short.MAX_VALUE)
-																.addComponent(resultado, GroupLayout.PREFERRED_SIZE,
-																		448, GroupLayout.PREFERRED_SIZE)))))
-								.addGap(9))
-						.addGroup(layout.createSequentialGroup().addGap(358).addComponent(btnNewButton,
+		layout.setHorizontalGroup(layout.createParallelGroup(Alignment.TRAILING).addGroup(layout.createSequentialGroup()
+				.addGap(31)
+				.addGroup(layout.createParallelGroup(Alignment.LEADING)
+						.addGroup(layout.createSequentialGroup()
+								.addComponent(tipo, GroupLayout.PREFERRED_SIZE, 444, GroupLayout.PREFERRED_SIZE)
+								.addGap(31).addComponent(accion, GroupLayout.DEFAULT_SIZE, 429, Short.MAX_VALUE))
+						.addGroup(layout.createSequentialGroup().addComponent(rdbtnNewRadioButton)
+								.addPreferredGap(ComponentPlacement.UNRELATED).addComponent(btnNewButton_1))
+						.addGroup(layout.createSequentialGroup()
+								.addComponent(entrada, GroupLayout.PREFERRED_SIZE, 449, GroupLayout.PREFERRED_SIZE)
+								.addPreferredGap(ComponentPlacement.RELATED, 7, Short.MAX_VALUE)
+								.addComponent(resultado, GroupLayout.PREFERRED_SIZE, 448, GroupLayout.PREFERRED_SIZE))
+						.addGroup(layout.createSequentialGroup().addGap(330).addComponent(btnNewButton,
 								GroupLayout.PREFERRED_SIZE, 244, GroupLayout.PREFERRED_SIZE)))
-						.addContainerGap()));
+				.addGap(27)));
 		layout.setVerticalGroup(layout.createParallelGroup(Alignment.LEADING)
-				.addGroup(layout.createSequentialGroup().addContainerGap().addComponent(jLabel7).addGap(26)
+				.addGroup(layout.createSequentialGroup().addContainerGap()
 						.addGroup(layout.createParallelGroup(Alignment.BASELINE)
 								.addComponent(tipo, GroupLayout.PREFERRED_SIZE, 47, GroupLayout.PREFERRED_SIZE)
 								.addComponent(accion, GroupLayout.PREFERRED_SIZE, 47, GroupLayout.PREFERRED_SIZE))
@@ -219,7 +187,7 @@ public class pnlChat extends javax.swing.JPanel {
 						.addGroup(layout.createParallelGroup(Alignment.LEADING)
 								.addComponent(resultado, GroupLayout.DEFAULT_SIZE, 473, Short.MAX_VALUE)
 								.addComponent(entrada, GroupLayout.DEFAULT_SIZE, 473, Short.MAX_VALUE))
-						.addContainerGap()));
+						.addGap(99)));
 
 		this.setLayout(layout);
 

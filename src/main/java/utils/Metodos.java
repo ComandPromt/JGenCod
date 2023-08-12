@@ -1,9 +1,9 @@
 package utils;
 
 import java.util.ArrayList;
-import java.util.regex.Pattern;
 
 public abstract class Metodos {
+
 	public static String calcularCampos(String tabla) {
 
 		tabla = tabla.replace(tabla.substring(0, tabla.indexOf("(") + 1), "").trim();
@@ -22,7 +22,7 @@ public abstract class Metodos {
 
 			valor = valor.trim();
 
-			if (!valor.contains("FOREIGN") && !tieneClaveCompuesta(valor) && !valor.startsWith("PRIMARY KEY")) {
+			if (!valor.contains("FOREIGN") && !valor.startsWith("PRIMARY KEY")) {
 
 				linea = valor.split(" ");
 
@@ -67,8 +67,8 @@ public abstract class Metodos {
 			text = text.toUpperCase();
 
 			if (text.contains("PRIMARY KEY")) {
-
-				resultado += "@Id\r\n";
+				// y si la clave es integer y es simple
+				resultado += "@Id\r\n@GeneratedValue(strategy = GenerationType.IDENTITY)";
 
 			}
 
@@ -203,140 +203,547 @@ public abstract class Metodos {
 
 	}
 
-	public static boolean tieneClaveCompuesta(String text) {
+	private static int countOccurrences(String text, String search) {
 
-		return Pattern.compile(".*PRIMARY KEY.*\\([a-zA-Z].*\\,.*\\).*", Pattern.CASE_INSENSITIVE).matcher(text).find();
+		int contador = 0;
 
-	}
+		while (text.indexOf(search) > -1) {
 
-	public static String convertirAHibernate(String texto, boolean lombok) {
+			text = text.substring(text.indexOf(search) + search.length(), text.length());
 
-		String resultado = "";
-
-		String[] tablas = texto.split(";");
-
-		ArrayList<String> lista = new ArrayList();
-
-		ArrayList<String> tablasNm = new ArrayList();
-
-		ArrayList<String> tablasBusqueda = new ArrayList();
-
-		ArrayList<String> clavesPrimarias = new ArrayList();
-
-		ArrayList<String> clavesForaneas = new ArrayList();
-
-		ArrayList<String> campos = new ArrayList();
-
-		for (String valor : tablas) {
-
-			lista.add(valor);
+			contador++;
 
 		}
 
-		texto.replace("create", "CREATE");
+		return contador;
 
-		texto.replace("table", "TABLE");
+	}
 
-		texto.replace("primary", "PRIMARY");
+	public static ArrayList<String> saberForaneas(int tipo, String text, String busqueda) {
 
-		texto.replace("foreign", "FOREIGN");
+		ArrayList<String> resultado = new ArrayList<>();
 
-		texto.replace("key", "KEY");
+		try {
+
+			text = limpiarCadena(text);
+
+			String dato = "";
+
+			String[] filas;
+
+			switch (tipo) {
+
+			default:
+
+			case 1:
+
+				resultado = recorrerOcurrencias(text, 1, countOccurrences(text, "CREATE TABLE"), false);
+
+				break;
+
+			case 2:
+
+				dato = "";
+
+				filas = text.split("\n");
+
+				for (int i = 0; i < filas.length; i++) {
+
+					if (filas[i].contains("PRIMARY KEY,") || filas[i].contains("PRIMARY KEY ")) {
+
+						resultado.add(filas[i].substring(0, filas[i].indexOf(" ")));
+
+					}
+
+					else if (filas[i].contains("PRIMARY KEY(")) {
+
+						filas[i] = filas[i].substring(filas[i].indexOf(busqueda) + busqueda.length()).trim();
+
+						dato = filas[i].substring(0, filas[i].indexOf(")"));
+
+						dato = dato.replace("(", "");
+
+						dato = dato.replace(",", "*");
+
+						resultado.add(dato);
+
+					}
+
+				}
+
+				break;
+
+			case 3:
+
+				dato = "";
+
+				filas = text.split("CREATE TABLE");
+
+				String textoSalida = "";
+
+				for (int i = 0; i < filas.length; i++) {
+
+					if (filas[i].contains("REFERENCES")) {
+
+						dato = filas[i].trim();
+
+						textoSalida = "";
+
+						int hasta = countOccurrences(dato, "REFERENCES");
+
+						for (int y = 0; y < hasta; y++) {
+
+							dato = dato.substring(dato.indexOf("REFERENCES") + 10, dato.length()).trim();
+
+							dato = dato.trim();
+
+							if (!textoSalida.equals("")) {
+
+								textoSalida += "*";
+
+							}
+
+							if (hasta - y == 1) {
+
+								textoSalida += dato.substring(0, dato.indexOf("("));
+
+							}
+
+							else {
+
+								if (dato.contains("(")) {
+
+									textoSalida += dato.substring(0, dato.indexOf("(")).trim();
+
+								}
+
+								else {
+
+									textoSalida += dato;
+
+								}
+
+							}
+
+						}
+
+						resultado.add(textoSalida);
+
+					}
+
+					else if (filas[i].contains("PRIMARY KEY") && !filas[i].contains("REFERENCES")) {
+
+						resultado.add("null");
+
+					}
+
+				}
+
+				break;
+
+			}
+
+		}
+
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return resultado;
+
+	}
+
+	private static ArrayList<String> recorrerOcurrencias(String text, int opcion, int numTablas, boolean atras) {
+
+		String fila = "";
+
+		String[] arrTablas = text.split(";");
+
+		String tablas = text;
+
+		ArrayList<String> resultado = new ArrayList<>();
+
+		String[] filas = tablas.split("\n");
 
 		String busqueda = "";
 
-		String tabla = "";
+		switch (opcion) {
 
-		for (String valor : lista) {
+		default:
+		case 1:
 
-			if (valor.contains("CREATE TABLE")) {
+			busqueda = "CREATE TABLE";
 
-				tabla = valor.substring(valor.indexOf(busqueda) + busqueda.length(), valor.indexOf("(")).trim()
-						.toLowerCase();
+			for (int i = 0; i < numTablas; i++) {
 
-				tabla = convertirACamelCase(tabla);
+				if (arrTablas[i].contains(busqueda)) {
 
-				busqueda = "CREATE TABLE";
+					tablas = tablas.substring(tablas.indexOf(busqueda) + busqueda.length()).trim();
 
-				tablas = extraerLinea(valor, "PRIMARY KEY");
+					fila = tablas.substring(0, tablas.indexOf(" "));
 
-				for (String atributos : tablas) {
+					fila = fila.replace("\r", "");
 
-					tablasBusqueda.add(tabla);
+					fila = fila.replace("\n", "");
 
-					clavesPrimarias.add(atributos.trim());
+					fila = fila.replace("))", ")");
 
-				}
+					try {
 
-				tablas = extraerLinea(valor, "FOREIGN KEY");
+						fila = fila.substring(0, fila.indexOf("(")).trim();
 
-				for (String atributos : tablas) {
+					}
 
-					clavesForaneas.add(atributos.trim());
+					catch (Exception e) {
 
-				}
+					}
 
-				resultado += ponerCabecera(lombok);
-
-				resultado += "@Table(name=\"" + tabla + "\")\r\n";
-
-				if (tieneClaveCompuesta(valor) && tieneRelacionNm()) {
-
-					tablasNm.add(ponerCabecera(lombok));
-
-					resultado += "@Data\r\npublic class " + tabla + "Id implements Serializable{";
+					resultado.add(fila);
 
 				}
 
 				else {
 
-					resultado += "\r\npublic class " + tabla + " {";
+					resultado.add(null);
 
 				}
 
-				resultado += "\r\n\r\n";
+			}
 
-				if (!tablasNm.isEmpty()) {
+			break;
 
-					// resultado += "@IdClass(" + tabla + "Id" + ".class)\r\n\r\n";
+		case 2:
 
-				}
+			if (atras) {
 
-				resultado += calcularCampos(valor);
+				for (int i = 0; i < filas.length; i++) {
 
-				for (String atributo : campos) {
+					if (filas[i].contains("PRIMARY KEY,")) {
 
-					if (clavesForaneas.contains(valor.toLowerCase()) || clavesForaneas.contains(valor.toUpperCase())) {
-
-						tablasNm.add("\r\nprivate " + valor + " " + valor.toLowerCase());
-
-					}
-
-					else {
-
-						tablasNm.add("private");
+						resultado.add(filas[i].substring(0, filas[i].indexOf(" ")));
 
 					}
 
 				}
 
-				resultado += "}\n\n";
+			}
+
+			else {
+
+				for (int i = 0; i < numTablas; i++) {
+
+					tablas = tablas.substring(tablas.indexOf(busqueda) + busqueda.length()).trim();
+
+					fila = tablas.substring(0, tablas.indexOf(")"));
+
+					fila = fila.replace("\r", "");
+
+					fila = fila.replace("\n", "");
+
+					fila = fila.replace("))", ")");
+
+					resultado.add(fila);
+
+				}
+
+			}
+
+			break;
+		case 3:
+			break;
+
+		}
+
+		return resultado;
+
+	}
+
+	public static String extraerLinea(String text, int opcion) {
+
+		text = text.toUpperCase();
+
+		text = text.replace("KEY (", "KEY(");
+
+		String resultado = "null";
+
+		switch (opcion) {
+
+		default:
+		case 1:
+
+			resultado = busquedaString(1, text);
+
+			break;
+
+		case 2:
+
+			resultado = busquedaString(2, text);
+
+			break;
+
+		case 3:
+
+			resultado = busquedaString(3, text);
+
+			break;
+
+		}
+
+//
+//				if (foraneas.length > 0) {
+//
+//					resultado = "";
+//
+//				}
+//
+//				for (int i = 0; i < foraneas.length; i++) {
+//
+//					if (foraneas.length - i == 1) {
+//
+//						resultado += foraneas[i];
+//
+//					}
+//
+//					else {
+//
+//						resultado += foraneas[i] + ",";
+//
+//					}
+//
+//				}
+
+		return resultado;
+
+	}
+
+	private static String busquedaString(int tipo, String text) {
+
+		String busqueda = "";
+
+		switch (tipo) {
+
+		default:
+
+		case 1:
+
+			busqueda = "CREATE TABLE";
+
+			break;
+
+		case 2:
+
+			busqueda = "PRIMARY KEY";
+
+			break;
+
+		case 3:
+
+			busqueda = "REFERENCES";
+
+			break;
+
+		}
+
+		ArrayList<String> tablasReferencia = saberForaneas(tipo, text, busqueda);
+
+		String resultado = "";
+
+		for (int i = 0; i < tablasReferencia.size(); i++) {
+
+			if (tablasReferencia.size() - i == 1) {
+
+				resultado += tablasReferencia.get(i);
+
+			}
+
+			else {
+
+				resultado += tablasReferencia.get(i) + "-";
 
 			}
 
 		}
 
-		for (String primarysKeys : clavesPrimarias) {
+		return resultado;
 
-			if (clavesForaneas.contains(primarysKeys.toLowerCase())
-					|| clavesForaneas.contains(primarysKeys.toUpperCase())) {
+	}
+
+	public static String convertirAHibernate(String texto, boolean lombok, boolean jakarta) {
+
+		String resultado = "";
+
+		try {
+
+			texto = texto.toUpperCase();
+
+			String[] tablas = extraerLinea(texto, 1).split("-");
+
+			String[] arrClavesPrimarias = extraerLinea(texto, 2).split("-");
+
+			for (int i = 0; i < arrClavesPrimarias.length; i++) {
+
+				System.out.println("primarias " + arrClavesPrimarias[i]);
 
 			}
 
-			tablasNm.add(busqueda);
+			String[] arrClavesForaneas = extraerLinea(texto, 3).split("-");
 
+			for (int i = 0; i < arrClavesForaneas.length; i++) {
+
+				System.out.println("foraneas " + arrClavesForaneas[i]);
+
+			}
+
+			ArrayList<String> clavesPrimarias = new ArrayList<>();
+
+			ArrayList<String> clavesForaneas = new ArrayList<>();
+
+			int indice = 0;
+
+			for (String atributos : tablas) {
+
+				if (indice < arrClavesPrimarias.length) {
+
+					clavesPrimarias.add(arrClavesPrimarias[indice]);
+				}
+
+				if (indice < arrClavesForaneas.length) {
+
+					clavesForaneas.add(arrClavesForaneas[indice]);
+
+				}
+
+				atributos = convertirACamelCase(atributos);
+
+				resultado += ponerCabecera(lombok, jakarta);
+
+				resultado += "@Table(name=\"" + atributos + "\")\r\n";
+
+				resultado += "public class " + atributos;
+
+				if (jakarta) {
+
+					resultado += " implements Serializable";
+
+				}
+
+				resultado += "{\r\n";
+
+				if (!arrClavesPrimarias[indice].contains("*")) {
+
+					resultado += "\t@Id\r\n" + "\t@GeneratedValue(strategy = GenerationType.IDENTITY)\r\n"
+							+ "    @Column(name = \"id\", nullable = false)";
+
+				}
+
+				else {
+
+					resultado += "\t@EmbeddedId\r\n" + "\tprivate " + atributos + "Id id;";
+
+				}
+
+				if (!arrClavesForaneas[indice].equals("null")) {
+
+					System.out.println("split " + arrClavesForaneas[indice]);
+
+					String[] indicesForaneas = arrClavesForaneas[indice].split("\\*");
+
+					// Comprobar si es relacionNm
+
+//					for (int i = 0; i < indicesForaneas.length; i++) {
+//
+//						resultado += "\r\n\t@ManyToOne\r\n\tprivate " + convertirACamelCase(indicesForaneas[i]).trim()
+//								+ " " + indicesForaneas[i].toLowerCase().trim() + ";";
+//
+//					}
+
+				}
+
+				// busqueda = "CREATE TABLE";
+
+//					if (tieneClaveCompuesta(valor) && tieneRelacionNm()) {
+//
+//						tablasNm.add(ponerCabecera(lombok, jakarta));
+//
+//
+//					}
+//
+//					else {
+//
+//						if (!tablasNm.isEmpty()) {
+//
+//							// resultado += "@IdClass(" + tabla + "Id" + ".class)\r\n\r\n";
+//
+//						}
+//
+//						else {
+//
+//						}
+
+//					}
+
+//
+//					resultado += calcularCampos(texto);
+
+//				for (String atributo : campos) {
+//
+//					if (clavesForaneas.contains(texto.toLowerCase()) || clavesForaneas.contains(texto.toUpperCase())) {
+//
+//						//tablasNm.add("\r\nprivate " + texto + " " + texto.toLowerCase());
+//
+//					}
+//
+//					else {
+//
+//						//tablasNm.add("private");
+//
+//					}
+//
+//				}
+
+				// resultado += "}\n\n";
+				indice++;
+			}
+
+//			for (String primarysKeys : clavesPrimarias) {
+//
+//				if (clavesForaneas.contains(primarysKeys.toLowerCase())
+//						|| clavesForaneas.contains(primarysKeys.toUpperCase())) {
+//
+//				}
+//
+//				tablasNm.add(busqueda);
+//
+//			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 
+		return resultado;
+
+	}
+
+	private static String sacarForaneas(String[] cadena) {
+		String resultado = "";
+		if (cadena.length > 0) {
+
+			try {
+
+				for (int i = 0; i < cadena.length; i++) {
+
+					resultado += "\r\n\t@ManyToOne(fetch = FetchType.LAZY, optional = false)";
+
+					resultado += "\r\n\t" + convertirACamelCase(cadena[i]) + " " + cadena[i].toLowerCase() + ";";
+
+				}
+
+			}
+
+			catch (Exception e) {
+
+			}
+		}
 		return resultado;
 
 	}
@@ -344,40 +751,32 @@ public abstract class Metodos {
 	public static boolean tieneRelacionNm() {
 
 		return false;
-	}
-
-	public static String[] extraerLinea(String text, String busqueda) {
-
-		String[] tablas;
-
-		String copiaTabla;
-
-		copiaTabla = text;
-
-		copiaTabla.substring(text.indexOf(busqueda) + 11, text.length());
-
-		copiaTabla.substring(text.indexOf("(") + 1, text.length());
-
-		copiaTabla.substring(0, text.indexOf(")"));
-
-		tablas = copiaTabla.split(",");
-
-		return tablas;
 
 	}
 
-	public static String ponerCabecera(boolean lombok) {
+	public static String ponerCabecera(boolean lombok, boolean jakarta) {
 
-		String resultado = "import jakarta.persistence.*;\r\n";
+		String resultado;
 
-		if (lombok) {
+		if (jakarta) {
 
-			resultado += "import lombok.Getter;\r\n" + "import lombok.Setter;\r\n\r\n" + "@Getter\r\n"
-					+ "\r\n@Setter\r\n\r\n";
+			resultado = "import jakarta.persistence.*;\r\n";
 
 		}
 
-		resultado += "@Entity\r\n\r\n";
+		else {
+			resultado = "import javax.persistence.*;\r\n";
+		}
+
+		if (lombok) {
+
+			resultado += "import lombok.Getter;\r\n"
+					+ "import lombok.Setter;\r\nimport lombok.NoArgsConstructor;\r\n\r\n" + "@Getter\r\n"
+					+ "@Setter\r\n" + "@NoArgsConstructor\r\n";
+
+		}
+
+		resultado += "\r\n@Entity\r\n";
 
 		return resultado;
 
@@ -385,7 +784,19 @@ public abstract class Metodos {
 
 	public static String convertirACamelCase(String text) {
 
-		return Character.toString(text.charAt(0)).toUpperCase() + text.toLowerCase().substring(1);
+		String resultado = "";
+
+		try {
+
+			resultado = Character.toString(text.charAt(0)).toUpperCase() + text.toLowerCase().substring(1);
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+		return resultado;
 
 	}
 
@@ -398,6 +809,24 @@ public abstract class Metodos {
 		text = text.replace("  ", " ");
 
 		return text;
+
+	}
+
+	public static String limpiarSQL(String texto) {
+
+		String resultado;
+
+		resultado = Metodos.limpiarBuscandoPorString(texto, "DROP DATABASE");
+
+		resultado = Metodos.limpiarBuscandoPorString(texto, "USE");
+
+		resultado = Metodos.limpiarBuscandoPorString(texto, "CREATE VIEW");
+
+		resultado = Metodos.limpiarBuscandoPorString(texto, "CREATE OR REPLACE VIEW");
+
+		resultado = Metodos.limpiarBuscandoPorString(texto, "INSERT");
+
+		return resultado;
 
 	}
 
@@ -492,4 +921,5 @@ public abstract class Metodos {
 		return index - restar;
 
 	}
+
 }
