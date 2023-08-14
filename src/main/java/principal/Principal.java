@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.TextField;
+import java.awt.Toolkit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,6 +24,8 @@ public class Principal extends javax.swing.JFrame {
 	int x, y;
 
 	public Principal() {
+		setIconImage(Toolkit.getDefaultToolkit().getImage(Principal.class.getResource("/img/created.png")));
+		setTitle("JGenCod");
 
 		initComponents();
 
@@ -407,7 +410,7 @@ public class Principal extends javax.swing.JFrame {
 		jLabel2.setBackground(new java.awt.Color(255, 255, 255));
 		jLabel2.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
 		jLabel2.setForeground(new java.awt.Color(255, 255, 255));
-		jLabel2.setText("Dashboard - RojeruSan");
+		jLabel2.setText("JGencod");
 
 		jCTextField1.setBackground(new java.awt.Color(38, 86, 186));
 		jCTextField1.setForeground(new java.awt.Color(255, 255, 255));
